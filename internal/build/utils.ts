@@ -9,35 +9,40 @@ import type { CompilePackageOptions } from "./types.js";
 
 const execAsync = promisify(exec);
 
+interface PnpmWorkspace {
+  name: string;
+  version?: string;
+  path: string;
+  private?: boolean;
+}
+
 export interface WorkspacePackage {
   pkg: PackageJson;
   path: string;
 }
 
 /**
- * Find all packages in the workspace that match the package query and are not excluded.
+ * Find all packages in the pnpm workspace that match the package query and are not excluded.
  *
  * @param rootDir - The root directory of the workspace
- * @param packageQuery - Optional query to filter packages
- * @param exclude - Optional array of package names or patterns to exclude
+ * @param opts - Options for filtering packages including packageQuery and exclude patterns
  * @returns A list of packages that match the query and are not excluded.
  */
 export async function findWorkspacePackages(
   rootDir: string,
   opts: CompilePackageOptions
 ) {
-  const result = await execAsync("yarn workspaces list --json");
+  const result = await execAsync("pnpm list --recursive --depth=-1 --json");
+  const workspacesArray: PnpmWorkspace[] = JSON.parse(result.stdout);
   const workspaces = (
     await Promise.all(
-      result.stdout.split("\n").map(async (line) => {
+      workspacesArray.map(async (workspace: PnpmWorkspace) => {
         try {
-          const workspace = JSON.parse(line);
-          if (workspace.location === ".") {
+          // Skip the root workspace (it has the same path as rootDir)
+          if (workspace.path === rootDir) {
             return null;
           }
-          const pkg = await import(
-            resolve(rootDir, workspace.location, "package.json")
-          );
+          const pkg = await import(resolve(workspace.path, "package.json"));
 
           /**
            * skip package if it matches any exclude pattern
@@ -61,7 +66,7 @@ export async function findWorkspacePackages(
           ) {
             return {
               pkg,
-              path: resolve(rootDir, workspace.location),
+              path: workspace.path,
             };
           }
         } catch {

@@ -13,10 +13,10 @@
     "clean": "rm -rf .turbo dist/",
     "start": "tsx --experimental-wasm-modules -r dotenv/config src/index.ts",
     "postinstall": "prisma generate --schema ./src/indexes/vector_stores/prisma_vectorstore/prisma/schema.prisma",
-    "start:dist": "yarn build && node -r dotenv/config dist/index.js",
+    "start:dist": "pnpm build && node -r dotenv/config dist/index.js",
     "lint:eslint": "NODE_OPTIONS=--max-old-space-size=4096 eslint --cache --ext .ts,.js src/",
-    "lint": "yarn lint:eslint",
-    "lint:fix": "yarn lint --fix",
+    "lint": "pnpm lint:eslint",
+    "lint:fix": "pnpm lint --fix",
     "precommit": "lint-staged",
     "format": "prettier --config .prettierrc --write \"src\"",
     "format:check": "prettier --config .prettierrc --check \"src\""
