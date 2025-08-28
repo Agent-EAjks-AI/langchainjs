@@ -378,4 +378,15 @@ describe("ChatOpenAI", () => {
 
     expect(model.reasoning).toEqual({ effort: "low" });
   });
+    
+  test("specifying streaming=false disables streaming", async () => {
+    const model = new ChatOpenAI({
+      model: "gpt-4o-2024-08-06",
+      streaming: false,
+    });
+
+    // disableStreaming will disable streaming in BaseChatModel
+    expect(model.disableStreaming).toBe(true);
+    expect(model.streaming).toBe(false);
+  });
 });
