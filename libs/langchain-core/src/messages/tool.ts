@@ -4,11 +4,15 @@ import {
   type BaseMessageFields,
   mergeContent,
   _mergeDicts,
-  type MessageType,
   _mergeObj,
   _mergeStatus,
-  type MessageContent,
 } from "./base.js";
+import {
+  $MessageStructure,
+  $StandardMessageStructure,
+  MessageType,
+} from "./message.js";
+import { Constructor } from "./utils.js";
 
 export type ToolMessageFields = BaseMessageFields;
 
@@ -53,8 +57,13 @@ export function isDirectToolOutput(x: unknown): x is DirectToolOutput {
 /**
  * Represents a tool message in a conversation.
  */
-export class ToolMessage extends BaseMessage implements DirectToolOutput {
-  declare content: MessageContent;
+export class ToolMessage<
+    TStructure extends $MessageStructure = $StandardMessageStructure
+  >
+  extends BaseMessage<TStructure, "tool">
+  implements DirectToolOutput
+{
+  readonly type = "tool" as const;
 
   static lc_name() {
     return "ToolMessage";
@@ -109,7 +118,7 @@ export class ToolMessage extends BaseMessage implements DirectToolOutput {
   }
 
   _getType(): MessageType {
-    return "tool";
+    return this.type;
   }
 
   static isInstance(message: BaseMessage): message is ToolMessage {
@@ -129,8 +138,10 @@ export class ToolMessage extends BaseMessage implements DirectToolOutput {
  * Represents a chunk of a tool message, which can be concatenated
  * with other tool message chunks.
  */
-export class ToolMessageChunk extends BaseMessageChunk {
-  declare content: MessageContent;
+export class ToolMessageChunk<
+  TStructure extends $MessageStructure = $StandardMessageStructure
+> extends BaseMessageChunk<TStructure, "tool"> {
+  readonly type = "tool" as const;
 
   tool_call_id: string;
 
@@ -162,11 +173,12 @@ export class ToolMessageChunk extends BaseMessageChunk {
   }
 
   _getType(): MessageType {
-    return "tool";
+    return this.type;
   }
 
   concat(chunk: ToolMessageChunk) {
-    return new ToolMessageChunk({
+    const Cls = this.constructor as Constructor<this>;
+    return new Cls({
       content: mergeContent(this.content, chunk.content),
       additional_kwargs: _mergeDicts(
         this.additional_kwargs,

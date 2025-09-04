@@ -3,25 +3,31 @@ import {
   BaseMessageChunk,
   mergeContent,
   _mergeDicts,
-  type MessageType,
   type BaseMessageFields,
-  type MessageContent,
 } from "./base.js";
+import {
+  $MessageStructure,
+  $StandardMessageStructure,
+  MessageType,
+} from "./message.js";
+import { Constructor } from "./utils.js";
 
 export type SystemMessageFields = BaseMessageFields;
 
 /**
  * Represents a system message in a conversation.
  */
-export class SystemMessage extends BaseMessage {
-  declare content: MessageContent;
+export class SystemMessage<
+  TStructure extends $MessageStructure = $StandardMessageStructure
+> extends BaseMessage<TStructure, "system"> {
+  readonly type = "system" as const;
 
   static lc_name() {
     return "SystemMessage";
   }
 
   _getType(): MessageType {
-    return "system";
+    return this.type;
   }
 
   constructor(
@@ -37,15 +43,17 @@ export class SystemMessage extends BaseMessage {
  * Represents a chunk of a system message, which can be concatenated with
  * other system message chunks.
  */
-export class SystemMessageChunk extends BaseMessageChunk {
-  declare content: MessageContent;
+export class SystemMessageChunk<
+  TStructure extends $MessageStructure = $StandardMessageStructure
+> extends BaseMessageChunk<TStructure, "system"> {
+  readonly type = "system" as const;
 
   static lc_name() {
     return "SystemMessageChunk";
   }
 
   _getType(): MessageType {
-    return "system";
+    return this.type;
   }
 
   constructor(
@@ -57,7 +65,8 @@ export class SystemMessageChunk extends BaseMessageChunk {
   }
 
   concat(chunk: SystemMessageChunk) {
-    return new SystemMessageChunk({
+    const Cls = this.constructor as Constructor<this>;
+    return new Cls({
       content: mergeContent(this.content, chunk.content),
       additional_kwargs: _mergeDicts(
         this.additional_kwargs,
