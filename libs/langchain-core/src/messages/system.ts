@@ -5,11 +5,7 @@ import {
   _mergeDicts,
   type BaseMessageFields,
 } from "./base.js";
-import {
-  $MessageStructure,
-  $StandardMessageStructure,
-  MessageType,
-} from "./message.js";
+import { $MessageStructure, $StandardMessageStructure } from "./message.js";
 import { Constructor } from "./utils.js";
 
 export type SystemMessageFields = BaseMessageFields;
@@ -24,10 +20,6 @@ export class SystemMessage<
 
   static lc_name() {
     return "SystemMessage";
-  }
-
-  _getType(): MessageType {
-    return this.type;
   }
 
   constructor(
@@ -50,10 +42,6 @@ export class SystemMessageChunk<
 
   static lc_name() {
     return "SystemMessageChunk";
-  }
-
-  _getType(): MessageType {
-    return this.type;
   }
 
   constructor(
@@ -82,11 +70,11 @@ export class SystemMessageChunk<
 }
 
 export function isSystemMessage(x: BaseMessage): x is SystemMessage {
-  return x._getType() === "system";
+  return x.type === "system";
 }
 
 export function isSystemMessageChunk(
   x: BaseMessageChunk
 ): x is SystemMessageChunk {
-  return x._getType() === "system";
+  return x.type === "system";
 }

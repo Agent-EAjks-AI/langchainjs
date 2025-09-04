@@ -5,11 +5,7 @@ import {
   _mergeDicts,
   type BaseMessageFields,
 } from "./base.js";
-import {
-  $MessageStructure,
-  $StandardMessageStructure,
-  MessageType,
-} from "./message.js";
+import { $MessageStructure, $StandardMessageStructure } from "./message.js";
 import { Constructor } from "./utils.js";
 
 export type HumanMessageFields = BaseMessageFields;
@@ -25,10 +21,6 @@ export class HumanMessage<
   }
 
   readonly type = "human" as const;
-
-  _getType(): MessageType {
-    return "human";
-  }
 
   constructor(
     fields: string | HumanMessageFields,
@@ -51,10 +43,6 @@ export class HumanMessageChunk<
   }
 
   readonly type = "human" as const;
-
-  _getType(): MessageType {
-    return this.type;
-  }
 
   constructor(
     fields: string | HumanMessageFields,

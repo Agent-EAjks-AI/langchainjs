@@ -329,20 +329,20 @@ export function getBufferString(
   const string_messages: string[] = [];
   for (const m of messages) {
     let role: string;
-    if (m._getType() === "human") {
+    if (m.type === "human") {
       role = humanPrefix;
-    } else if (m._getType() === "ai") {
+    } else if (m.type === "ai") {
       role = aiPrefix;
-    } else if (m._getType() === "system") {
+    } else if (m.type === "system") {
       role = "System";
-    } else if (m._getType() === "function") {
+    } else if (m.type === "function") {
       role = "Function";
-    } else if (m._getType() === "tool") {
+    } else if (m.type === "tool") {
       role = "Tool";
-    } else if (m._getType() === "generic") {
+    } else if (m.type === "generic") {
       role = (m as ChatMessage).role;
     } else {
-      throw new Error(`Got unsupported message type: ${m._getType()}`);
+      throw new Error(`Got unsupported message type: ${m.type}`);
     }
     const nameStr = m.name ? `${m.name}, ` : "";
     const readableContent =

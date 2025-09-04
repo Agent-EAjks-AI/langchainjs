@@ -258,7 +258,9 @@ export abstract class BaseMessage<
    * isAIMessage(message); // true
    * ```
    */
-  abstract _getType(): MessageType;
+  _getType(): MessageType {
+    return this.type;
+  }
 
   /**
    * @deprecated Use .type instead
@@ -328,7 +330,7 @@ export abstract class BaseMessage<
 
   toDict(): StoredMessage {
     return {
-      type: this._getType(),
+      type: this.type,
       data: (this.toJSON() as SerializedConstructor)
         .kwargs as StoredMessageData,
     };
@@ -563,7 +565,7 @@ export type BaseMessageLike =
 export function isBaseMessage(
   messageLike?: unknown
 ): messageLike is BaseMessage {
-  return typeof (messageLike as BaseMessage)?._getType === "function";
+  return typeof (messageLike as BaseMessage)?.type === "string";
 }
 
 export function isBaseMessageChunk(

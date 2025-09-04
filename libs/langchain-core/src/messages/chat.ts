@@ -50,12 +50,8 @@ export class ChatMessage<
     this.role = fields.role;
   }
 
-  _getType(): MessageType {
-    return this.type;
-  }
-
   static isInstance(message: BaseMessage): message is ChatMessage {
-    return message._getType() === "generic";
+    return message.type === "generic";
   }
 
   override get _printableFields(): Record<string, unknown> {
@@ -97,10 +93,6 @@ export class ChatMessageChunk<
     this.role = fields.role;
   }
 
-  _getType(): MessageType {
-    return this.type;
-  }
-
   concat(chunk: ChatMessageChunk) {
     const Cls = this.constructor as Constructor<this>;
     return new Cls({
@@ -127,9 +119,9 @@ export class ChatMessageChunk<
 }
 
 export function isChatMessage(x: BaseMessage): x is ChatMessage {
-  return x._getType() === "generic";
+  return x.type === "generic";
 }
 
 export function isChatMessageChunk(x: BaseMessageChunk): x is ChatMessageChunk {
-  return x._getType() === "generic";
+  return x.type === "generic";
 }

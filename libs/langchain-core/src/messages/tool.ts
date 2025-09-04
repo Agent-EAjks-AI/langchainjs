@@ -117,12 +117,8 @@ export class ToolMessage<
     this.status = fields.status;
   }
 
-  _getType(): MessageType {
-    return this.type;
-  }
-
   static isInstance(message: BaseMessage): message is ToolMessage {
-    return message._getType() === "tool";
+    return message.type === "tool";
   }
 
   override get _printableFields(): Record<string, unknown> {
@@ -170,10 +166,6 @@ export class ToolMessageChunk<
 
   static lc_name() {
     return "ToolMessageChunk";
-  }
-
-  _getType(): MessageType {
-    return this.type;
   }
 
   concat(chunk: ToolMessageChunk) {
@@ -334,5 +326,5 @@ export function isToolMessage(x: unknown): x is ToolMessage {
 }
 
 export function isToolMessageChunk(x: BaseMessageChunk): x is ToolMessageChunk {
-  return x._getType() === "tool";
+  return x.type === "tool";
 }

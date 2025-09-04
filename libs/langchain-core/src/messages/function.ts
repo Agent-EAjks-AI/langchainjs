@@ -50,10 +50,6 @@ export class FunctionMessage<
     }
     super(fields);
   }
-
-  _getType(): MessageType {
-    return this.type;
-  }
 }
 
 /**
@@ -68,10 +64,6 @@ export class FunctionMessageChunk<
   }
 
   readonly type = "function" as const;
-
-  _getType(): MessageType {
-    return this.type;
-  }
 
   concat(chunk: FunctionMessageChunk) {
     const Cls = this.constructor as Constructor<this>;
@@ -92,11 +84,11 @@ export class FunctionMessageChunk<
 }
 
 export function isFunctionMessage(x: BaseMessage): x is FunctionMessage {
-  return x._getType() === "function";
+  return x.type === "function";
 }
 
 export function isFunctionMessageChunk(
   x: BaseMessageChunk
 ): x is FunctionMessageChunk {
-  return x._getType() === "function";
+  return x.type === "function";
 }

@@ -1,9 +1,5 @@
 import { BaseMessage, BaseMessageFields } from "./base.js";
-import {
-  $MessageStructure,
-  $StandardMessageStructure,
-  MessageType,
-} from "./message.js";
+import { $MessageStructure, $StandardMessageStructure } from "./message.js";
 
 export interface RemoveMessageFields
   extends Omit<BaseMessageFields, "content"> {
@@ -32,10 +28,6 @@ export class RemoveMessage<
       content: "",
     });
     this.id = fields.id;
-  }
-
-  _getType(): MessageType {
-    return "remove";
   }
 
   override get _printableFields(): Record<string, unknown> {

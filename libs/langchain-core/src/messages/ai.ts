@@ -249,10 +249,6 @@ export class AIMessage<
     return "AIMessage";
   }
 
-  _getType(): MessageType {
-    return "ai";
-  }
-
   get contentBlocks(): Array<ContentBlock.Standard> {
     if (this.response_metadata?.output_version === "v1") {
       return this.content as Array<ContentBlock.Standard>;
@@ -432,10 +428,6 @@ export class AIMessageChunk<
 
   static lc_name() {
     return "AIMessageChunk";
-  }
-
-  _getType(): MessageType {
-    return "ai";
   }
 
   get contentBlocks(): Array<ContentBlock.Standard> {
