@@ -38,20 +38,6 @@ export const stateClassificationMiddleware = createMiddleware({
     }
 
     /**
-     * get all tools
-     */
-    const allTools = [
-      "new_task", // New Task tools
-      "ask_for_clarification",
-      "confirm_action", // Question tools
-      "read_file",
-      "list_files",
-      "search_files",
-      "write_to_file", // Action tools
-      "attempt_completion", // Completion tools
-    ];
-
-    /**
      * get the system prompt
      */
     const systemPrompt = format(
@@ -68,7 +54,6 @@ export const stateClassificationMiddleware = createMiddleware({
      */
     return {
       ...request,
-      tools: allTools,
       systemPrompt,
       toolChoice: "required", // Force tool usage
     };
