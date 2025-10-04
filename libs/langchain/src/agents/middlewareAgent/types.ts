@@ -787,17 +787,23 @@ export type InvokeConfiguration<ContextSchema extends Record<string, any>> =
    * If the context schema is a default object, `context` can be optional
    */
   ContextSchema extends InteropZodDefault<any>
-    ? Partial<Pick<PregelOptions<any, any, any>, CreateAgentPregelOptions>> & {
+    ? Partial<
+        Pick<PregelOptions<any, any, ContextSchema>, CreateAgentPregelOptions>
+      > & {
         context?: Partial<ContextSchema>;
       }
     : /**
      * If the context schema is all optional, `context` can be optional
      */
     IsAllOptional<ContextSchema> extends true
-    ? Partial<Pick<PregelOptions<any, any, any>, CreateAgentPregelOptions>> & {
+    ? Partial<
+        Pick<PregelOptions<any, any, ContextSchema>, CreateAgentPregelOptions>
+      > & {
         context?: Partial<ContextSchema>;
       }
-    : Partial<Pick<PregelOptions<any, any, any>, CreateAgentPregelOptions>> &
+    : Partial<
+        Pick<PregelOptions<any, any, ContextSchema>, CreateAgentPregelOptions>
+      > &
         WithMaybeContext<ContextSchema>;
 
 export type StreamConfiguration<ContextSchema extends Record<string, any>> =
@@ -805,7 +811,9 @@ export type StreamConfiguration<ContextSchema extends Record<string, any>> =
    * If the context schema is a default object, `context` can be optional
    */
   ContextSchema extends InteropZodDefault<any>
-    ? Partial<Pick<PregelOptions<any, any, any>, CreateAgentPregelOptions>> & {
+    ? Partial<
+        Pick<PregelOptions<any, any, ContextSchema>, CreateAgentPregelOptions>
+      > & {
         context?: Partial<ContextSchema>;
       }
     : /**
@@ -814,7 +822,7 @@ export type StreamConfiguration<ContextSchema extends Record<string, any>> =
     IsAllOptional<ContextSchema> extends true
     ? Partial<
         Pick<
-          PregelOptions<any, any, any>,
+          PregelOptions<any, any, ContextSchema>,
           CreateAgentPregelOptions | "streamMode"
         >
       > & {
@@ -822,7 +830,7 @@ export type StreamConfiguration<ContextSchema extends Record<string, any>> =
       }
     : Partial<
         Pick<
-          PregelOptions<any, any, any>,
+          PregelOptions<any, any, ContextSchema>,
           CreateAgentPregelOptions | "streamMode"
         >
       > &
