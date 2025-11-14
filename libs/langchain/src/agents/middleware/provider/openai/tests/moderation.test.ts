@@ -16,11 +16,25 @@ import {
 } from "../moderation.js";
 import { createAgent } from "../../../../index.js";
 import { FakeToolCallingChatModel } from "../../../../tests/utils.js";
+import { initChatModel } from "../../../../../chat_models/universal.js";
 
 vi.mock(
   "@langchain/openai",
   () => import("../../../tests/__mocks__/@langchain/openai.js")
 );
+
+vi.mock("../../../../../chat_models/universal.js", async () => {
+  const actual = await vi.importActual(
+    "../../../../../chat_models/universal.js"
+  );
+  const { ChatOpenAI } = await import(
+    "../../../tests/__mocks__/@langchain/openai.js"
+  );
+  return {
+    ...actual,
+    initChatModel: vi.fn().mockResolvedValue(new ChatOpenAI()),
+  };
+});
 
 const flaggedResponse = {
   id: "modr-80",
@@ -92,28 +106,55 @@ describe("openAIModerationMiddleware", () => {
       expect(middleware.name).toBe("OpenAIModerationMiddleware");
     });
 
-    it("should throw error if model is not OpenAI", () => {
+    it("should throw error if model is not OpenAI", async () => {
       const nonOpenAIModel = {
         getName: () => "SomeOtherModel",
       } as any;
 
-      expect(() => {
-        openAIModerationMiddleware({
-          model: nonOpenAIModel,
-        });
-      }).toThrow("Model must be an OpenAI model");
+      const middleware = openAIModerationMiddleware({
+        model: nonOpenAIModel,
+        checkInput: true,
+        exitBehavior: "end",
+      });
+
+      const state = {
+        messages: [new HumanMessage("I want to harm myself")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+      await expect(beforeModelHook?.(state as any, {} as any)).rejects.toThrow(
+        "Model must be an OpenAI model"
+      );
     });
 
-    it("should throw error if model does not support moderation", () => {
+    it("should throw error if model does not support moderation", async () => {
       const modelWithoutModeration = {
         getName: () => "ChatOpenAI",
       } as any;
 
-      expect(() => {
-        openAIModerationMiddleware({
-          model: modelWithoutModeration,
-        });
-      }).toThrow("Model must support moderation");
+      const middleware = openAIModerationMiddleware({
+        model: modelWithoutModeration,
+        checkInput: true,
+        exitBehavior: "end",
+      });
+
+      const state = {
+        messages: [new HumanMessage("I want to harm myself")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+
+      await expect(beforeModelHook?.(state as any, {} as any)).rejects.toThrow(
+        "Model must support moderation"
+      );
     });
   });
 
@@ -1047,6 +1088,196 @@ describe("openAIModerationMiddleware", () => {
       // Final message should be the violation message from tool result moderation
       expect(result.messages[result.messages.length - 1].content).toBe(
         "I'm sorry, but I can't comply with that request. It was flagged for self-harm."
+      );
+    });
+  });
+
+  describe("String Model Support", () => {
+    afterEach(() => {
+      (initChatModel as unknown as MockInstance).mockClear();
+    });
+
+    it("should accept string model name for input moderation", async () => {
+      const flaggedResponse = {
+        id: "modr-100",
+        model: "omni-moderation-latest",
+        results: [
+          {
+            flagged: true,
+            categories: { violence: true },
+            category_scores: { violence: 0.8 },
+            category_applied_input_types: { violence: ["text"] },
+          },
+        ],
+      };
+
+      (mockModel.moderateContent as unknown as MockInstance).mockResolvedValue(
+        flaggedResponse
+      );
+      (initChatModel as unknown as MockInstance).mockResolvedValue(mockModel);
+
+      const middleware = openAIModerationMiddleware({
+        model: "gpt-4o-mini",
+        checkInput: true,
+        exitBehavior: "end",
+      });
+
+      const state = {
+        messages: [new HumanMessage("Violent content")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+      const result = await beforeModelHook?.(state as any, {} as any);
+
+      expect(initChatModel).toHaveBeenCalledWith("gpt-4o-mini");
+      expect(mockModel.moderateContent).toHaveBeenCalledWith(
+        "Violent content",
+        expect.objectContaining({ model: "omni-moderation-latest" })
+      );
+      expect(result).toHaveProperty("jumpTo", "end");
+      expect(result).toHaveProperty("messages");
+      expect(result?.messages?.[result?.messages?.length - 1]?.content).toBe(
+        "I'm sorry, but I can't comply with that request. It was flagged for violence."
+      );
+    });
+
+    it("should lazily initialize model only when needed", async () => {
+      const middleware = openAIModerationMiddleware({
+        model: "gpt-4o-mini",
+        checkInput: false,
+        checkOutput: false,
+        checkToolResults: false,
+      });
+
+      const state = {
+        messages: [new HumanMessage("Some input")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+      await beforeModelHook?.(state as any, {} as any);
+
+      // Model should not be initialized if no moderation checks are enabled
+      expect(initChatModel).not.toHaveBeenCalled();
+    });
+
+    it("should cache initialized model instance", async () => {
+      const flaggedResponse = {
+        id: "modr-104",
+        model: "omni-moderation-latest",
+        results: [
+          {
+            flagged: true,
+            categories: { violence: true },
+            category_scores: { violence: 0.8 },
+            category_applied_input_types: { violence: ["text"] },
+          },
+        ],
+      };
+
+      (mockModel.moderateContent as unknown as MockInstance).mockResolvedValue(
+        flaggedResponse
+      );
+
+      const middleware = openAIModerationMiddleware({
+        model: "gpt-4o-mini",
+        checkInput: true,
+        checkOutput: true,
+        exitBehavior: "end",
+      });
+
+      const state1 = {
+        messages: [new HumanMessage("Violent input")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+      await beforeModelHook?.(state1 as any, {} as any);
+
+      const state2 = {
+        messages: [
+          new HumanMessage("Safe input"),
+          new AIMessage("Violent output"),
+        ],
+      };
+
+      const afterModelHook =
+        typeof middleware.afterModel === "object" &&
+        "hook" in middleware.afterModel
+          ? middleware.afterModel.hook
+          : middleware.afterModel;
+      await afterModelHook?.(state2 as any, {} as any);
+
+      // initChatModel should only be called once, model should be cached
+      expect(initChatModel).toHaveBeenCalledTimes(1);
+      expect(initChatModel).toHaveBeenCalledWith("gpt-4o-mini");
+    });
+
+    it("should throw error if string model does not resolve to OpenAI model", async () => {
+      const nonOpenAIModel = {
+        getName: () => "SomeOtherModel",
+      } as any;
+
+      (initChatModel as unknown as MockInstance).mockResolvedValue(
+        nonOpenAIModel
+      );
+
+      const middleware = openAIModerationMiddleware({
+        model: "non-openai-model",
+        checkInput: true,
+      });
+
+      const state = {
+        messages: [new HumanMessage("Test input")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+
+      await expect(beforeModelHook?.(state as any, {} as any)).rejects.toThrow(
+        "Model must be an OpenAI model"
+      );
+    });
+
+    it("should throw error if string model resolves to model without moderation support", async () => {
+      const modelWithoutModeration = {
+        getName: () => "ChatOpenAI",
+      } as any;
+
+      (initChatModel as unknown as MockInstance).mockResolvedValue(
+        modelWithoutModeration
+      );
+
+      const middleware = openAIModerationMiddleware({
+        model: "gpt-4o-mini",
+        checkInput: true,
+      });
+
+      const state = {
+        messages: [new HumanMessage("Test input")],
+      };
+
+      const beforeModelHook =
+        typeof middleware.beforeModel === "object" &&
+        "hook" in middleware.beforeModel
+          ? middleware.beforeModel.hook
+          : middleware.beforeModel;
+
+      await expect(beforeModelHook?.(state as any, {} as any)).rejects.toThrow(
+        "Model must support moderation"
       );
     });
   });

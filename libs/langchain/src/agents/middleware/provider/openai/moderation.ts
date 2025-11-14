@@ -3,9 +3,23 @@ import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 
+import { initChatModel } from "../../../../chat_models/universal.js";
 import { createMiddleware } from "../../../middleware.js";
 import type { MiddlewareResult, AgentMiddleware } from "../../types.js";
 import type { AgentBuiltInState } from "../../../runtime.js";
+
+/**
+ * OpenAI model interface.
+ */
+interface OpenAIModel extends BaseLanguageModel {
+  moderateContent?: (
+    input: string | string[],
+    params?: {
+      model?: ModerationModel;
+      options?: unknown;
+    }
+  ) => Promise<ModerationResponse>;
+}
 
 /**
  * Stage where a violation occurred.
@@ -79,9 +93,26 @@ export class OpenAIModerationError extends Error {
  */
 export interface OpenAIModerationMiddlewareOptions {
   /**
-   * OpenAI model to use for moderation.
+   * OpenAI model to use for moderation. Can be either a model name or a BaseChatModel instance.
+   * @example
+   * ```ts
+   * const model = new ChatOpenAI({ model: "gpt-4o-mini" });
+   * const middleware = openAIModerationMiddleware({ model });
+   * const agent = createAgent({
+   *   model,
+   *   middleware: [middleware],
+   * });
+   * ```
+   * @example
+   * ```ts
+   * const middleware = openAIModerationMiddleware({ model: "gpt-4o-mini" });
+   * const agent = createAgent({
+   *   model: "gpt-5",
+   *   middleware: [middleware],
+   * });
+   * ```
    */
-  model: BaseChatModel;
+  model: string | BaseChatModel;
 
   /**
    * Moderation model to use.
@@ -132,13 +163,38 @@ export interface OpenAIModerationMiddlewareOptions {
  * - Tool results: Results returned from tool executions
  *
  * @param options - Configuration options for the middleware
+ * @param options.model - OpenAI model to use for moderation. Can be either a model name or a BaseChatModel instance.
+ * @param options.moderationModel - Moderation model to use.
+ * @param options.checkInput - Whether to check user input messages.
+ * @param options.checkOutput - Whether to check model output messages.
+ * @param options.checkToolResults - Whether to check tool result messages.
+ * @param options.exitBehavior - How to handle violations.
+ * @param options.violationMessage - Custom template for violation messages.
+ * @returns Middleware function that can be used to moderate agent traffic.
  *
- * @example
+ * @example  Using model instance
  * ```ts
- * import { openAIModerationMiddleware } from "@langchain/langchain/agents/middleware/provider/openai/moderation";
- * import { createAgent } from "@langchain/langchain/agents";
+ * import { createAgent, openAIModerationMiddleware } from "langchain";
  *
  * const middleware = openAIModerationMiddleware({
+ *   checkInput: true,
+ *   checkOutput: true,
+ *   exitBehavior: "end"
+ * });
+ *
+ * const agent = createAgent({
+ *   model: "openai:gpt-4o",
+ *   tools: [...],
+ *   middleware: [middleware],
+ * });
+ * ```
+ *
+ * @example Using model name
+ * ```ts
+ * import { createAgent, openAIModerationMiddleware } from "langchain";
+ *
+ * const middleware = openAIModerationMiddleware({
+ *   model: "gpt-4o-mini",
  *   checkInput: true,
  *   checkOutput: true,
  *   exitBehavior: "end"
@@ -171,35 +227,37 @@ export function openAIModerationMiddleware(
     violationMessage,
   } = options;
 
-  /**
-   * Check if the model is an OpenAI model.
-   */
-  if (!model.getName().includes("ChatOpenAI")) {
-    throw new Error(
-      `Model must be an OpenAI model to use moderation middleware. Got: ${model.getName()}`
-    );
-  }
+  let openaiModel: OpenAIModel | undefined;
+  const initModerationModel = async (): Promise<OpenAIModel> => {
+    if (openaiModel) {
+      return openaiModel;
+    }
 
-  /**
-   * check if OpenAI model package supports moderation.
-   */
-  if (
-    !("moderateContent" in model) ||
-    typeof model.moderateContent !== "function"
-  ) {
-    throw new Error(
-      "Model must support moderation to use moderation middleware."
-    );
-  }
+    openaiModel =
+      typeof model === "string" ? await initChatModel(model) : model;
 
-  const openaiModel = model as BaseLanguageModel & {
-    moderateContent?: (
-      input: string | string[],
-      params?: {
-        model?: ModerationModel;
-        options?: unknown;
-      }
-    ) => Promise<ModerationResponse>;
+    /**
+     * Check if the model is an OpenAI model.
+     */
+    if (!openaiModel.getName().includes("ChatOpenAI")) {
+      throw new Error(
+        `Model must be an OpenAI model to use moderation middleware. Got: ${openaiModel.getName()}`
+      );
+    }
+
+    /**
+     * check if OpenAI model package supports moderation.
+     */
+    if (
+      !("moderateContent" in openaiModel) ||
+      typeof openaiModel.moderateContent !== "function"
+    ) {
+      throw new Error(
+        "Model must support moderation to use moderation middleware."
+      );
+    }
+
+    return openaiModel;
   };
 
   /**
@@ -325,11 +383,12 @@ export function openAIModerationMiddleware(
 
     const message = messages[idx];
     const text = extractText(message);
-    if (!text || !openaiModel.moderateContent) {
+    const model = await initModerationModel();
+    if (!text || !model.moderateContent) {
       return null;
     }
 
-    const response = await openaiModel.moderateContent(text, {
+    const response = await model.moderateContent(text, {
       model: moderationModel,
     });
 
@@ -362,11 +421,12 @@ export function openAIModerationMiddleware(
       }
 
       const text = extractText(msg);
-      if (!text || !openaiModel.moderateContent) {
+      const model = await initModerationModel();
+      if (!text || !model.moderateContent) {
         continue;
       }
 
-      const response = await openaiModel.moderateContent(text, {
+      const response = await model.moderateContent(text, {
         model: moderationModel,
       });
       const flaggedResult = response.results.find((result) => result.flagged);
@@ -410,11 +470,12 @@ export function openAIModerationMiddleware(
 
     const aiMessage = messages[lastAiIdx];
     const text = extractText(aiMessage);
-    if (!text || !openaiModel.moderateContent) {
+    const model = await initModerationModel();
+    if (!text || !model.moderateContent) {
       return null;
     }
 
-    const response = await openaiModel.moderateContent(text, {
+    const response = await model.moderateContent(text, {
       model: moderationModel,
     });
     const flaggedResult = response.results.find((result) => result.flagged);
