@@ -73,4 +73,53 @@ describe("Anthropic Code Execution Tool Integration Tests", () => {
       })
     );
   }, 60000);
+
+  it("code execution tool supports container reuse across requests", async () => {
+    const llm = createModel();
+
+    // First request - creates a container and writes a file
+    const response1 = await llm.invoke(
+      "Write the number 7 to /tmp/number.txt using bash. Just do it, no explanation needed.",
+      {
+        tools: [codeExecution_20250825()],
+      }
+    );
+
+    expect(response1).toBeInstanceOf(AIMessage);
+
+    // Extract container ID from response for reuse
+    const containerId = (
+      response1.response_metadata?.container as { id?: string } | undefined
+    )?.id;
+    expect(containerId).toBeDefined();
+    expect(typeof containerId).toBe("string");
+
+    // Second request - reuse container to access the file
+    const response2 = await llm.invoke(
+      "Read /tmp/number.txt and calculate its square. Just give me the result.",
+      {
+        tools: [codeExecution_20250825()],
+        container: containerId,
+      }
+    );
+
+    expect(response2).toBeInstanceOf(AIMessage);
+
+    // The response should contain code execution results
+    const contentBlocks = response2.content as Array<{ type: string }>;
+    const hasCodeExecutionResult = contentBlocks.some(
+      (block) =>
+        block.type === "bash_code_execution_tool_result" ||
+        block.type === "text_editor_code_execution_tool_result"
+    );
+    expect(hasCodeExecutionResult).toBe(true);
+
+    // The final text response should contain 49 (7 squared)
+    const textBlock = contentBlocks.find((block) => block.type === "text") as {
+      type: string;
+      text: string;
+    };
+    expect(textBlock).toBeDefined();
+    expect(textBlock.text).toContain("49");
+  }, 120000);
 });
