@@ -525,15 +525,18 @@ Available commands:
 - Restart the session: `{ restart: true }`
 
 ```typescript
-import { ChatAnthropic, bash_20250124 } from "@langchain/anthropic";
-import type { Bash20250124Command } from "@langchain/anthropic";
+import {
+  ChatAnthropic,
+  tools,
+  type Bash20250124Command,
+} from "@langchain/anthropic";
 import { execSync } from "child_process";
 
 const llm = new ChatAnthropic({
   model: "claude-sonnet-4-5-20250929",
 });
 
-const bash = bash_20250124({
+const bash = tools.bash_20250124({
   execute: async (args: Bash20250124Command) => {
     if (args.restart) {
       // Reset session state
