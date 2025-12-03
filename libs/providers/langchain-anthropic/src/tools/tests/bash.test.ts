@@ -16,7 +16,10 @@ describe("Anthropic Bash Tool Unit Tests", () => {
     });
 
     it("creates a valid bash tool with execute function", async () => {
-      const mockExecute = async (args: { command?: string; restart?: boolean }) => {
+      const mockExecute = async (args: {
+        command?: string;
+        restart?: boolean;
+      }) => {
         if (args.restart) {
           return "Session restarted";
         }
@@ -90,4 +93,3 @@ describe("Anthropic Bash Tool Unit Tests", () => {
     });
   });
 });
-
