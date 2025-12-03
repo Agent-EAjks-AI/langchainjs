@@ -464,7 +464,7 @@ When this tool is provided, Claude automatically gains access to:
 - **File operations** - Create, view, and edit files directly
 
 ```typescript
-import { ChatAnthropic, codeExecution_20250825 } from "@langchain/anthropic";
+import { ChatAnthropic, tools } from "@langchain/anthropic";
 
 const llm = new ChatAnthropic({
   model: "claude-sonnet-4-5-20250929",
@@ -473,13 +473,13 @@ const llm = new ChatAnthropic({
 // Basic usage - calculations and data analysis
 const response = await llm.invoke(
   "Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
-  { tools: [codeExecution_20250825()] }
+  { tools: [tools.codeExecution_20250825()] }
 );
 
 // File operations and visualization
 const response2 = await llm.invoke(
   "Create a matplotlib visualization of sales data and save it as chart.png",
-  { tools: [codeExecution_20250825()] }
+  { tools: [tools.codeExecution_20250825()] }
 );
 ```
 
@@ -488,7 +488,7 @@ Container reuse for multi-step workflows:
 ```typescript
 // First request - creates a container
 const response1 = await llm.invoke("Write a random number to /tmp/number.txt", {
-  tools: [codeExecution_20250825()],
+  tools: [tools.codeExecution_20250825()],
 });
 
 // Extract container ID from response for reuse
@@ -498,7 +498,7 @@ const containerId = response1.response_metadata?.container?.id;
 const response2 = await llm.invoke(
   "Read /tmp/number.txt and calculate its square",
   {
-    tools: [codeExecution_20250825()],
+    tools: [tools.codeExecution_20250825()],
     container: containerId,
   }
 );
