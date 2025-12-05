@@ -7,7 +7,7 @@ import {
 } from "@langchain/core/messages";
 import { ToolCall } from "@langchain/core/messages/tool";
 import { customTool } from "../custom.js";
-import { ChatOpenAI } from "../../chat_models.js";
+import { ChatOpenAI } from "../../chat_models/index.js";
 
 describe("customTool", () => {
   test("invoking a custom tool will keep tool metadata", async () => {
