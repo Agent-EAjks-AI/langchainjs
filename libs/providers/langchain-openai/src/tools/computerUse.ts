@@ -1,6 +1,5 @@
 import { OpenAI as OpenAIClient } from "openai";
 import { tool } from "@langchain/core/tools";
-import type { DynamicStructuredTool, ToolRuntime } from "@langchain/core/tools";
 
 /**
  * The type of computer environment to control.
@@ -72,7 +71,7 @@ export interface ComputerUseOptions {
    * If not provided, you'll need to handle action execution manually by
    * checking `computer_call` outputs in the response.
    */
-  execute?: (action: ComputerUseAction) => string | Promise<string>;
+  execute: (action: ComputerUseAction) => string | Promise<string>;
 }
 
 /**
@@ -194,42 +193,32 @@ const TOOL_NAME = "computer";
  * - Use `truncation: "auto"` parameter when making requests
  * - Recommended to use with `reasoning.summary` for debugging
  */
-export function computerUse(
-  options: ComputerUseOptions
-): DynamicStructuredTool {
-  const computerTool = tool(
-    options.execute as
-      | ((
-          input: unknown,
-          runtime: ToolRuntime<unknown, unknown>
-        ) => string | Promise<string>)
-      | undefined,
-    {
-      name: TOOL_NAME,
-      description:
-        "Control a computer interface by executing mouse clicks, keyboard input, scrolling, and other actions.",
-      schema: {
-        type: "object",
-        properties: {
-          action: {
-            type: "string",
-            enum: [
-              "click",
-              "double_click",
-              "drag",
-              "keypress",
-              "move",
-              "screenshot",
-              "scroll",
-              "type",
-              "wait",
-            ],
-          },
+export function computerUse(options: ComputerUseOptions) {
+  const computerTool = tool(options.execute, {
+    name: TOOL_NAME,
+    description:
+      "Control a computer interface by executing mouse clicks, keyboard input, scrolling, and other actions.",
+    schema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "click",
+            "double_click",
+            "drag",
+            "keypress",
+            "move",
+            "screenshot",
+            "scroll",
+            "type",
+            "wait",
+          ],
         },
-        required: ["action"],
       },
-    }
-  );
+      required: ["action"],
+    },
+  });
 
   computerTool.extras = {
     ...(computerTool.extras ?? {}),
