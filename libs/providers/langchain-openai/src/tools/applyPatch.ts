@@ -14,8 +14,9 @@ export type ApplyPatchDeleteFileOperation =
 /**
  * Union type of all apply patch operations from OpenAI SDK.
  */
-export type ApplyPatchOperation =
-  OpenAIClient.Responses.ResponseApplyPatchToolCall["operation"];
+export type ApplyPatchOperation = NonNullable<
+  OpenAIClient.Responses.ResponseApplyPatchToolCall["operation"]
+>;
 
 /**
  * Options for the Apply Patch tool.
