@@ -7,6 +7,7 @@ describe("OpenAI Computer Use Tool Tests", () => {
       displayWidth: 1024,
       displayHeight: 768,
       environment: "browser",
+      execute: async () => "",
     });
 
     expect(computer.name).toBe("computer");
